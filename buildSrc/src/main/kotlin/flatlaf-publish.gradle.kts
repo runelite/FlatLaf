@@ -38,7 +38,7 @@ publishing {
 			afterEvaluate {
 				artifactId = extension.artifactId
 			}
-			groupId = "com.formdev"
+			groupId = "net.runelite"
 
 			from( components["java"] )
 
