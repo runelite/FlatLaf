@@ -44,6 +44,7 @@ import com.formdev.flatlaf.ui.FlatUIUtils;
  * @uiDefault Component.focusWidth						int
  * @uiDefault Component.borderWidth						int
  * @uiDefault Component.focusColor						Color
+ * @uiDefault CheckBox.icon.size						int
  * @uiDefault CheckBox.icon.focusWidth					int or float	optional; defaults to Component.focusWidth
  * @uiDefault CheckBox.icon.borderWidth					int or float	optional; defaults to Component.borderWidth
  * @uiDefault CheckBox.icon.selectedBorderWidth			int or float	optional; defaults to CheckBox.icon.borderWidth
@@ -156,10 +157,12 @@ public class FlatCheckBoxIcon
 		return key.replace( ".icon.", ".icon[" + style + "]." );
 	}
 
-	static final int ICON_SIZE = 15;
+	private FlatCheckBoxIcon(int size) {
+		super( size, size, null );
+	}
 
 	public FlatCheckBoxIcon() {
-		super( ICON_SIZE, ICON_SIZE, null );
+		this( UIManager.getInt( "CheckBox.icon.size" ) );
 	}
 
 	/** @since 2 */
@@ -221,7 +224,7 @@ public class FlatCheckBoxIcon
 
 	protected void paintFocusBorder( Component c, Graphics2D g ) {
 		// the outer focus border is painted outside of the icon
-		float wh = ICON_SIZE - 1 + (focusWidth * 2);
+		float wh = width - 1 + (focusWidth * 2);
 		float arcwh = arc + (focusWidth * 2);
 		g.fill( new RoundRectangle2D.Float( -focusWidth + 1, -focusWidth, wh, wh, arcwh, arcwh ) );
 	}
@@ -231,28 +234,30 @@ public class FlatCheckBoxIcon
 			return;
 
 		int arcwh = arc;
-		g.fillRoundRect( 1, 0, 14, 14, arcwh, arcwh );
+		g.fillRoundRect( 1, 0, width - 1, width - 1, arcwh, arcwh );
 	}
 
 	protected void paintBackground( Component c, Graphics2D g, float borderWidth ) {
 		float xy = borderWidth;
-		float wh = 14 - (borderWidth * 2);
+		float wh = width - 1 - (borderWidth * 2);
 		float arcwh = arc - borderWidth;
 		g.fill( new RoundRectangle2D.Float( 1 + xy, xy, wh, wh, arcwh, arcwh ) );
 	}
 
 	protected void paintCheckmark( Component c, Graphics2D g ) {
+		float scale = width / 15f;
 		Path2D.Float path = new Path2D.Float( Path2D.WIND_NON_ZERO, 3 );
-		path.moveTo( 4.5f, 7.5f );
-		path.lineTo( 6.6f, 10f );
-		path.lineTo( 11.25f, 3.5f );
+		path.moveTo( 4.5f * scale, 7.5f * scale );
+		path.lineTo( 6.6f * scale, 10f * scale );
+		path.lineTo( 11.25f * scale, 3.5f * scale );
 
 		g.setStroke( new BasicStroke( 1.9f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND ) );
 		g.draw( path );
 	}
 
 	protected void paintIndeterminate( Component c, Graphics2D g ) {
-		g.fill( new RoundRectangle2D.Float( 3.75f, 5.75f, 8.5f, 2.5f, 2f, 2f ) );
+		float scale = width / 15f;
+		g.fill( new RoundRectangle2D.Float( 3.75f * scale, 5.75f * scale, 8.5f * scale, 2.5f * scale, 2f, 2f ) );
 	}
 
 	protected boolean isIndeterminate( Component c ) {

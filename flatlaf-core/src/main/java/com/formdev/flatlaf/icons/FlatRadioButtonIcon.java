@@ -47,7 +47,7 @@ public class FlatRadioButtonIcon
 	@Override
 	protected void paintFocusBorder( Component c, Graphics2D g ) {
 		// the outer focus border is painted outside of the icon
-		float wh = ICON_SIZE + (focusWidth * 2);
+		float wh = width + (focusWidth * 2);
 		g.fill( new Ellipse2D.Float( -focusWidth, -focusWidth, wh, wh ) );
 	}
 
@@ -56,19 +56,19 @@ public class FlatRadioButtonIcon
 		if( borderWidth == 0 )
 			return;
 
-		g.fillOval( 0, 0, 15, 15 );
+		g.fillOval( 0, 0, width, width );
 	}
 
 	@Override
 	protected void paintBackground( Component c, Graphics2D g, float borderWidth ) {
 		float xy = borderWidth;
-		float wh = 15 - (borderWidth * 2);
+		float wh = width - (borderWidth * 2);
 		g.fill( new Ellipse2D.Float( xy, xy, wh, wh ) );
 	}
 
 	@Override
 	protected void paintCheckmark( Component c, Graphics2D g ) {
-		float xy = (ICON_SIZE - centerDiameter) / 2f;
+		float xy = (width - centerDiameter) / 2f;
 		g.fill( new Ellipse2D.Float( xy, xy, centerDiameter, centerDiameter ) );
 	}
 }
