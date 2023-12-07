@@ -24,6 +24,7 @@ import java.awt.Component;
 import java.awt.ComponentOrientation;
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.EventQueue;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -48,10 +49,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.CellRendererPane;
+import javax.swing.ComboBoxModel;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.InputMap;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JComboBox.KeySelectionManager;
 import javax.swing.JComponent;
 import javax.swing.JList;
 import javax.swing.JPanel;
@@ -102,7 +105,6 @@ import com.formdev.flatlaf.util.SystemInfo;
  * @uiDefault ComboBox.maximumRowCount			int
  * @uiDefault ComboBox.buttonStyle				String	auto (default), button, mac or none
  * @uiDefault Component.arrowType				String	chevron (default) or triangle
- * @uiDefault Component.isIntelliJTheme			boolean
  * @uiDefault ComboBox.editableBackground		Color	optional; defaults to ComboBox.background
  * @uiDefault ComboBox.focusedBackground		Color	optional
  * @uiDefault ComboBox.disabledBackground		Color
@@ -134,7 +136,6 @@ public class FlatComboBoxUI
 	@Styleable protected int editorColumns;
 	@Styleable protected String buttonStyle;
 	@Styleable protected String arrowType;
-	protected boolean isIntelliJTheme;
 
 	private Color background;
 	@Styleable protected Color editableBackground;
@@ -181,6 +182,9 @@ public class FlatComboBoxUI
 
 	private void installUIImpl( JComponent c ) {
 		super.installUI( c );
+
+		// install key selection manager that shows popup when Space key is pressed
+		comboBox.setKeySelectionManager( new FlatKeySelectionManager( comboBox.getKeySelectionManager() ) );
 
 		installStyle();
 	}
@@ -240,7 +244,6 @@ public class FlatComboBoxUI
 		editorColumns = UIManager.getInt( "ComboBox.editorColumns" );
 		buttonStyle = UIManager.getString( "ComboBox.buttonStyle" );
 		arrowType = UIManager.getString( "Component.arrowType" );
-		isIntelliJTheme = UIManager.getBoolean( "Component.isIntelliJTheme" );
 
 		background = UIManager.getColor( "ComboBox.background" );
 		editableBackground = UIManager.getColor( "ComboBox.editableBackground" );
@@ -679,7 +682,7 @@ public class FlatComboBoxUI
 
 			return (editableBackground != null && comboBox.isEditable()) ? editableBackground : background;
 		} else
-			return isIntelliJTheme ? FlatUIUtils.getParentBackground( comboBox ) : disabledBackground;
+			return disabledBackground;
 	}
 
 	protected Color getForeground( boolean enabled ) {
@@ -986,6 +989,29 @@ public class FlatComboBoxUI
 				}
 			}
 
+			// improve location of selected item in popup if list is large and scrollable
+			if( list.getHeight() == 0 ) {
+				// If popup is shown for the first time (or after a laf switch) and is scrollable,
+				// then BasicComboPopup scrolls the selected item to the top of the visible area.
+				// But for usability it would be better to have selected item somewhere
+				// in the middle of the visible area so that the user can see items above
+				// the selected item, which are usually more "important".
+
+				int selectedIndex = list.getSelectedIndex();
+				if( selectedIndex >= 1 ) {
+					int maximumRowCount = comboBox.getMaximumRowCount();
+					if( selectedIndex < maximumRowCount ) {
+						// selected item is in the first visible items --> scroll to top
+						list.scrollRectToVisible( new Rectangle() );
+					} else {
+						// scroll the selected item to the middle of the visible area
+						int firstVisibleIndex = Math.max( selectedIndex - (maximumRowCount / 2), 0 );
+						if( firstVisibleIndex > 0 )
+							list.ensureIndexIsVisible( firstVisibleIndex );
+					}
+				}
+			}
+
 			super.show( invoker, x, y );
 		}
 
@@ -1207,6 +1233,48 @@ public class FlatComboBoxUI
 				action.actionPerformed( new ActionEvent( comboBox, e.getID(),
 					e.getActionCommand(), e.getWhen(), e.getModifiers() ) );
 			}
+		}
+	}
+
+	//---- class FlatKeySelectionManager --------------------------------------
+
+	/**
+	 * Key selection manager that delegates to the default manager.
+	 * Shows the popup if Space key is pressed and "typed characters" buffer is empty.
+	 * If items contain spaces (e.g. "a b") it is still possible to select them
+	 * by pressing keys a, Space and b.
+	 */
+	private class FlatKeySelectionManager
+		implements JComboBox.KeySelectionManager, UIResource
+	{
+		private final KeySelectionManager delegate;
+		private final long timeFactor;
+		private long lastTime;
+
+		FlatKeySelectionManager( JComboBox.KeySelectionManager delegate ) {
+			this.delegate = delegate;
+
+			Long value = (Long) UIManager.get( "ComboBox.timeFactor" );
+			timeFactor = (value != null) ? value : 1000;
+		}
+
+		@SuppressWarnings( "rawtypes" )
+		@Override
+		public int selectionForKey( char aKey, ComboBoxModel aModel ) {
+			long time = EventQueue.getMostRecentEventTime();
+			long oldLastTime = lastTime;
+			lastTime = time;
+
+			// SPACE key shows popup if not yet visible
+			if( aKey == ' ' &&
+				time - oldLastTime >= timeFactor &&
+				!comboBox.isPopupVisible() )
+			{
+				comboBox.setPopupVisible( true );
+				return -1;
+			}
+
+			return delegate.selectionForKey( aKey, aModel );
 		}
 	}
 }

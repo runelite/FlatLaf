@@ -18,6 +18,7 @@ package com.formdev.flatlaf.ui;
 
 import java.io.File;
 import java.net.URL;
+import java.security.CodeSource;
 import com.formdev.flatlaf.FlatSystemProperties;
 import com.formdev.flatlaf.util.LoggingFacade;
 import com.formdev.flatlaf.util.NativeLibrary;
@@ -32,6 +33,7 @@ import com.formdev.flatlaf.util.SystemInfo;
  */
 class FlatNativeLibrary
 {
+	private static boolean initialized;
 	private static NativeLibrary nativeLibrary;
 
 	/**
@@ -44,24 +46,41 @@ class FlatNativeLibrary
 	}
 
 	private static void initialize() {
-		if( nativeLibrary != null )
+		if( initialized )
+			return;
+		initialized = true;
+
+		if( !FlatSystemProperties.getBoolean( FlatSystemProperties.USE_NATIVE_LIBRARY, true ) )
 			return;
 
 		String classifier;
 		String ext;
-		if( SystemInfo.isWindows_10_orLater && (SystemInfo.isX86 || SystemInfo.isX86_64) ) {
-			// Windows: requires Windows 10/11 (x86 or x86_64)
+		if( SystemInfo.isWindows_10_orLater && (SystemInfo.isX86 || SystemInfo.isX86_64 || SystemInfo.isAARCH64) ) {
+			// Windows: requires Windows 10/11 (x86, x86_64 or aarch64)
 
-			classifier = SystemInfo.isX86_64 ? "windows-x86_64" : "windows-x86";
+			if( SystemInfo.isAARCH64 )
+				classifier = "windows-arm64";
+			else if( SystemInfo.isX86_64 )
+				classifier = "windows-x86_64";
+			else
+				classifier = "windows-x86";
+
 			ext = "dll";
 
-			// In Java 8, load jawt.dll (part of JRE) explicitly because it
-			// is not found when running application with <jdk>/bin/java.exe.
-			// When using <jdk>/jre/bin/java.exe, it is found.
-			// jawt.dll is located in <jdk>/jre/bin/.
-			// Java 9 and later do not have this problem,
-			// but load jawt.dll anyway to be on the safe side.
-			loadJAWT();
+			// Do not load jawt.dll (part of JRE) here explicitly because
+			// the FlatLaf native library flatlaf.dll may be loaded very early on Windows
+			// (e.g. from class com.formdev.flatlaf.util.SystemInfo) and before AWT is
+			// initialized (and awt.dll is loaded). Loading jawt.dll also loads awt.dll.
+			// In Java 8, loading jawt.dll before AWT is initialized may load
+			// a wrong version of awt.dll if a newer Java version (e.g. 19)
+			// is in PATH environment variable. Then Java 19 awt.dll and Java 8 awt.dll
+			// are loaded at same time and calling JAWT_GetAWT() crashes the application.
+			//
+			// To avoid this, flatlaf.dll is not linked to jawt.dll,
+			// which avoids loading jawt.dll when flatlaf.dll is loaded.
+			// Instead flatlaf.dll dynamically loads jawt.dll when first used,
+			// which is guaranteed after AWT initialization.
+
 		} else if( SystemInfo.isLinux && SystemInfo.isX86_64 ) {
 			// Linux: requires x86_64
 
@@ -128,8 +147,13 @@ class FlatNativeLibrary
 	private static File findLibraryBesideJar( String classifier, String ext ) {
 		try {
 			// get location of FlatLaf jar
-			URL jarUrl = FlatNativeLibrary.class.getProtectionDomain().getCodeSource().getLocation();
+			CodeSource codeSource = FlatNativeLibrary.class.getProtectionDomain().getCodeSource();
+			URL jarUrl = (codeSource != null) ? codeSource.getLocation() : null;
 			if( jarUrl == null )
+				return null;
+
+			// if url is not a file, then we're running in a special environment (e.g. WebStart)
+			if( !"file".equals( jarUrl.getProtocol() ) )
 				return null;
 
 			File jarFile = new File( jarUrl.toURI() );

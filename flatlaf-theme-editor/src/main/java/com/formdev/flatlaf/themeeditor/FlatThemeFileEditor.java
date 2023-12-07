@@ -102,7 +102,7 @@ class FlatThemeFileEditor
 	private final FlatThemePropertiesBaseManager propertiesBaseManager = new FlatThemePropertiesBaseManager();
 	private final JButton newButton;
 
-	static void main( String[] args ) {
+	static void launch( String[] args ) {
 		File dir = (args.length > 0)
 			? new File( args[0] )
 			: null;
@@ -140,7 +140,6 @@ class FlatThemeFileEditor
 
 		directoryField.setRenderer( new DirectoryRenderer( directoryField ) );
 
-		openDirectoryButton.setIcon( new FlatSVGIcon( "com/formdev/flatlaf/themeeditor/icons/menu-open.svg" ) );
 		if( UIManager.getLookAndFeel() instanceof FlatDarkLaf )
 			darkLafMenuItem.setSelected( true );
 
@@ -867,7 +866,14 @@ class FlatThemeFileEditor
 
 		// restore directories history
 		String[] directories = getPrefsStrings( state, KEY_DIRECTORIES );
-		SortedComboBoxModel<File> model = new SortedComboBoxModel<>( new File[0] );
+		SortedComboBoxModel<File> model = new SortedComboBoxModel<>( new File[0],
+			(file1, file2) -> {
+				// replace path separator with zero to order shorter names before longer
+				// (e.g. c:\dir\sub before c:\dir2\sub)
+				String path1 = file1.getPath().replace( '/', '\0' ).replace( '\\', '\0' );
+				String path2 = file2.getPath().replace( '/', '\0' ).replace( '\\', '\0' );
+				return path1.compareToIgnoreCase( path2 );
+			} );
 		for( String dirStr : directories ) {
 			File dir = new File( dirStr );
 			if( dir.isDirectory() )
@@ -1045,6 +1051,7 @@ class FlatThemeFileEditor
 				openDirectoryMenuItem.setText("Open Directory...");
 				openDirectoryMenuItem.setMnemonic('O');
 				openDirectoryMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
+				openDirectoryMenuItem.setIcon(new FlatSVGIcon("com/formdev/flatlaf/themeeditor/icons/menu-open.svg"));
 				openDirectoryMenuItem.addActionListener(e -> openDirectory());
 				fileMenu.add(openDirectoryMenuItem);
 
@@ -1052,6 +1059,7 @@ class FlatThemeFileEditor
 				newPropertiesFileMenuItem.setText("New Properties File...");
 				newPropertiesFileMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
 				newPropertiesFileMenuItem.setMnemonic('N');
+				newPropertiesFileMenuItem.setIcon(new FlatSVGIcon("com/formdev/flatlaf/themeeditor/icons/add.svg"));
 				newPropertiesFileMenuItem.addActionListener(e -> newPropertiesFile());
 				fileMenu.add(newPropertiesFileMenuItem);
 
@@ -1059,6 +1067,7 @@ class FlatThemeFileEditor
 				saveAllMenuItem.setText("Save All");
 				saveAllMenuItem.setMnemonic('S');
 				saveAllMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
+				saveAllMenuItem.setIcon(new FlatSVGIcon("com/formdev/flatlaf/themeeditor/icons/menu-saveall.svg"));
 				saveAllMenuItem.addActionListener(e -> saveAll());
 				fileMenu.add(saveAllMenuItem);
 				fileMenu.addSeparator();
@@ -1230,6 +1239,7 @@ class FlatThemeFileEditor
 
 			//---- openDirectoryButton ----
 			openDirectoryButton.setFocusable(false);
+			openDirectoryButton.setIcon(new FlatSVGIcon("com/formdev/flatlaf/themeeditor/icons/menu-open.svg"));
 			openDirectoryButton.addActionListener(e -> openDirectory());
 			controlPanel.add(openDirectoryButton, "cell 2 0");
 		}
@@ -1289,13 +1299,9 @@ class FlatThemeFileEditor
 	private static class SortedComboBoxModel<E>
 		extends DefaultComboBoxModel<E>
 	{
-		private Comparator<E> comparator;
+		private final Comparator<E> comparator;
 
-		public SortedComboBoxModel( E[] items ) {
-			this( items, null );
-		}
-
-		public SortedComboBoxModel( E[] items, Comparator<E> c ) {
+		SortedComboBoxModel( E[] items, Comparator<E> c ) {
 			super( sort( items, c ) );
 			this.comparator = c;
 		}
@@ -1306,7 +1312,7 @@ class FlatThemeFileEditor
 				super.addElement( obj );
 			} else {
 				int index = binarySearch( this, obj, comparator );
-				insertElementAt( obj, (index < 0) ? ((-index)-1) : index );
+				insertElementAt( obj, (index < 0) ? (-index - 1) : index );
 			}
 		}
 

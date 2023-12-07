@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-val releaseVersion = "3.0"
-val developmentVersion = "3.1-SNAPSHOT"
+import net.ltgt.gradle.errorprone.errorprone
 
-version = if( rootProject.hasProperty( "release" ) ) releaseVersion else developmentVersion
+version = property( if( hasProperty( "release" ) ) "flatlaf.releaseVersion" else "flatlaf.developmentVersion" ) as String
 
 allprojects {
 	version = rootProject.version
@@ -42,6 +41,10 @@ if( !toolchainJavaVersion.isNullOrEmpty() )
 	println( "Java toolchain ${toolchainJavaVersion}" )
 println()
 
+
+plugins {
+	alias( libs.plugins.errorprone ) apply false
+}
 
 allprojects {
 	tasks {
@@ -79,6 +82,58 @@ allprojects {
 				links( "https://docs.oracle.com/en/java/javase/11/docs/api/" )
 			}
 			isFailOnError = false
+		}
+	}
+
+
+	//---- Error Prone ----
+
+	tasks.register( "errorprone" ) {
+		group = "verification"
+		tasks.withType<JavaCompile>().forEach {
+			dependsOn( it )
+		}
+	}
+
+	val useErrorProne = gradle.startParameter.taskNames.contains( "errorprone" )
+	if( useErrorProne ) {
+		plugins.withType<JavaPlugin> {
+			apply( plugin = libs.plugins.errorprone.get().pluginId )
+
+			dependencies {
+				"errorprone"( libs.errorprone )
+			}
+
+			tasks.withType<JavaCompile>().configureEach {
+				options.compilerArgs.add( "-Werror" )
+				options.errorprone {
+					disable(
+						"ReferenceEquality",	// reports usage of '==' for objects
+						"StringSplitter",		// reports String.split()
+						"JavaTimeDefaultTimeZone",	// reports Year.now()
+						"MissingSummary",		// reports `/** @since 2 */`
+						"InvalidBlockTag",		// reports @uiDefault in javadoc
+						"AlreadyChecked",		// reports false positives
+						"InlineMeSuggester",	// suggests using Error Prone annotations for deprecated methods
+						"TypeParameterUnusedInFormals",
+						"UnsynchronizedOverridesSynchronized",
+						"NonApiType",			// reports ArrayList/HashSet in parameter or return type
+					)
+					when( project.name ) {
+						"flatlaf-intellij-themes" -> disable(
+							"MutablePublicArray",	// reports FlatAllIJThemes.INFOS
+						)
+						"flatlaf-theme-editor" -> disable(
+							"CatchAndPrintStackTrace",
+						)
+						"flatlaf-testing" -> disable(
+							"CatchAndPrintStackTrace",
+							"JdkObsolete",			// reports Hashtable used for JSlider.setLabelTable()
+							"JavaUtilDate",			// reports usage of class Date
+						)
+					}
+				}
+			}
 		}
 	}
 }

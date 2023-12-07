@@ -41,10 +41,11 @@ public class FlatLafThemeEditor
 			//   - "system": use current macOS appearance (light or dark)
 			//   - "NSAppearanceNameAqua": use light appearance
 			//   - "NSAppearanceNameDarkAqua": use dark appearance
-			// (needs to be set on main thread; setting it on AWT thread does not work)
+			// (must be set on main thread and before AWT/Swing is initialized;
+			//  setting it on AWT thread does not work)
 			System.setProperty( "apple.awt.application.appearance", "system" );
 		}
 
-		FlatThemeFileEditor.main( args );
+		FlatThemeFileEditor.launch( args );
 	}
 }

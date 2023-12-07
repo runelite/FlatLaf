@@ -24,6 +24,7 @@ import java.util.function.Function;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
+import javax.swing.border.Border;
 import javax.swing.plaf.TableUI;
 
 /**
@@ -107,17 +108,55 @@ public class FlatTableCellBorder
 	public static class Focused
 		extends FlatTableCellBorder
 	{
+		@Override
+		public void paintBorder( Component c, Graphics g, int x, int y, int width, int height ) {
+			if( c != null && c.getClass().getName().equals( "javax.swing.JTable$BooleanRenderer" ) ) {
+				// boolean renderer in JTable does not use Table.focusSelectedCellHighlightBorder
+				// if cell is selected and focused (as DefaultTableCellRenderer does)
+				// --> delegate to Table.focusSelectedCellHighlightBorder
+				//     to make FlatLaf "focus indicator border hiding" work
+				JTable table = (JTable) SwingUtilities.getAncestorOfClass( JTable.class, c );
+				if( table != null &&
+					c.getForeground() == table.getSelectionForeground() &&
+					c.getBackground() == table.getSelectionBackground() )
+				{
+					Border border = UIManager.getBorder( "Table.focusSelectedCellHighlightBorder" );
+					if( border != null ) {
+						border.paintBorder( c, g, x, y, width, height );
+						return;
+					}
+				}
+			}
+
+			super.paintBorder( c, g, x, y, width, height );
+		}
 	}
 
 	//---- class Selected -----------------------------------------------------
 
 	/**
-	 * Border for selected cell that uses margins and paints focus indicator border
-	 * if enabled (Table.showCellFocusIndicator=true) or at least one selected cell is editable.
+	 * Border for selected cell that uses margins and paints focus indicator border.
+	 * The focus indicator is shown under following conditions:
+	 * <ul>
+	 * <li>always if enabled via UI property {@code Table.showCellFocusIndicator=true}
+	 * <li>for row selection mode if exactly one row is selected and at least one cell in that row is editable
+	 * <li>for column selection mode if exactly one column is selected and at least one cell in that column is editable
+	 * <li>never for cell selection mode
+	 * </ul>
+	 * The reason for this logic is to hide the focus indicator when it is not needed,
+	 * and only show it when there are editable cells and the user needs to know
+	 * which cell is focused to start editing.
+	 * <p>
+	 * To avoid possible performance issues, checking for editable cells is limited
+	 * to {@link #maxCheckCellsEditable}. If there are more cells to check,
+	 * the focus indicator is always shown.
 	 */
 	public static class Selected
 		extends FlatTableCellBorder
 	{
+		/** @since 3.1 */
+		public int maxCheckCellsEditable = 50;
+
 		@Override
 		public void paintBorder( Component c, Graphics g, int x, int y, int width, int height ) {
 			Boolean b = getStyleFromTableUI( c, ui -> ui.showCellFocusIndicator );
@@ -125,7 +164,7 @@ public class FlatTableCellBorder
 
 			if( !showCellFocusIndicator ) {
 				JTable table = (JTable) SwingUtilities.getAncestorOfClass( JTable.class, c );
-				if( table != null && !isSelectionEditable( table ) )
+				if( table != null && !shouldShowCellFocusIndicator( table ) )
 					return;
 			}
 
@@ -133,28 +172,57 @@ public class FlatTableCellBorder
 		}
 
 		/**
-		 * Checks whether at least one selected cell is editable.
+		 * Returns whether focus indicator border should be shown.
+		 *
+		 * @since 3.1
 		 */
-		protected boolean isSelectionEditable( JTable table ) {
-			if( table.getRowSelectionAllowed() ) {
-				int columnCount = table.getColumnCount();
-				int[] selectedRows = table.getSelectedRows();
-				for( int selectedRow : selectedRows ) {
-					for( int column = 0; column < columnCount; column++ ) {
-						if( table.isCellEditable( selectedRow, column ) )
-							return true;
-					}
-				}
-			}
+		protected boolean shouldShowCellFocusIndicator( JTable table ) {
+			boolean rowSelectionAllowed = table.getRowSelectionAllowed();
+			boolean columnSelectionAllowed = table.getColumnSelectionAllowed();
 
-			if( table.getColumnSelectionAllowed() ) {
+			// do not show for cell selection mode
+			// (unlikely that user wants edit cell in case that multiple cells are selected;
+			// if only a single cell is selected then it is clear where the focus is)
+			if( rowSelectionAllowed && columnSelectionAllowed )
+				return false;
+
+			if( rowSelectionAllowed ) {
+				// row selection mode
+
+				// do not show if more than one row is selected
+				// (unlikely that user wants edit cell in this case)
+				if( table.getSelectedRowCount() != 1 )
+					return false;
+
+				// show always if there are too many columns to check for editable
+				int columnCount = table.getColumnCount();
+				if( columnCount > maxCheckCellsEditable )
+					return true;
+
+				// check whether at least one selected cell is editable
+				int selectedRow = table.getSelectedRow();
+				for( int column = 0; column < columnCount; column++ ) {
+					if( table.isCellEditable( selectedRow, column ) )
+						return true;
+				}
+			} else if( columnSelectionAllowed ) {
+				// column selection mode
+
+				// do not show if more than one column is selected
+				// (unlikely that user wants edit cell in this case)
+				if( table.getSelectedColumnCount() != 1 )
+					return false;
+
+				// show always if there are too many rows to check for editable
 				int rowCount = table.getRowCount();
-				int[] selectedColumns = table.getSelectedColumns();
-				for( int selectedColumn : selectedColumns ) {
-					for( int row = 0; row < rowCount; row++ ) {
-						if( table.isCellEditable( row, selectedColumn ) )
-							return true;
-					}
+				if( rowCount > maxCheckCellsEditable )
+					return true;
+
+				// check whether at least one selected cell is editable
+				int selectedColumn = table.getSelectedColumn();
+				for( int row = 0; row < rowCount; row++ ) {
+					if( table.isCellEditable( row, selectedColumn ) )
+						return true;
 				}
 			}
 

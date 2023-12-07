@@ -1,12 +1,158 @@
 FlatLaf Change Log
 ==================
 
-## 3.1-SNAPSHOT
+## 3.2.5
+
+#### Fixed bugs
+
+- Popup: Fixed NPE if popup invoker is `null` on Windows 10. (issue #753;
+  regression in 3.2.1 in fix for #626)
+
+
+## 3.2.4
+
+#### Fixed bugs
+
+- Popup: Fixed NPE if popup invoker is `null` on Linux with Wayland and Java 21.
+  (issue #752; regression in 3.2.3)
+
+
+## 3.2.3
+
+#### Fixed bugs
+
+- Popup: Popups that request focus were not shown on Linux with Wayland and Java 21.
+  (issue #752)
+
+
+## 3.2.2
+
+#### Fixed bugs
+
+- Button: Fixed painting icon and text at wrong location when using HTML text,
+  left/right vertical alignment and running in Java 19+. (issue #746)
+- CheckBox and RadioButton: Fixed cut off right side when border is removed and
+  horizontal alignment is set to `right`. (issue #734)
+- TabbedPane: Fixed NPE when using focusable component as tab component and
+  switching theme. (issue #745)
+
+
+## 3.2.1
+
+#### Fixed bugs
+
+- Fixed memory leak in
+  `MultiResolutionImageSupport.create(int,Dimension[],Function<Dimension,Image>)`,
+  which caches images created by the producer function. Used by
+  `FlatSVGIcon.getImage()` and `FlatSVGUtils.createWindowIconImages()`. If you
+  use one of these methods, it is **strongly recommended** to upgrade to this
+  version, because if the returned image is larger and painted very often it may
+  result in an out-of-memory situation. (issue #726)
+- FileChooser: Fixed occasional NPE in `FlatShortcutsPanel` on Windows. (issue
+  #718)
+- TextField: Fixed placeholder text painting, which did not respect horizontal
+  alignment property of `JTextField`. (issue #721)
+- Popup: Fixed drop shadow if popup overlaps a heavyweight component. (Windows
+  10 only; issue #626)
+
+
+## 3.2
+
+#### New features and improvements
+
+- TabbedPane: Support rounded underline selection and rounded card tabs. (PR
+  #703)
+- FlatLaf window decorations:
+  - Support for Windows on ARM 64-bit. (issue #443, PR #707)
+  - Support toolbox-style "small" window title bar. (issue #659, PR #702)
+- Extras: Class `FlatSVGIcon` now uses [JSVG](https://github.com/weisJ/jsvg)
+  library (instead of svgSalamander) for rendering. JSVG provides improved SVG
+  rendering and uses less memory compared to svgSalamander. (PR #684)
+- ComboBox: Improved location of selected item in popup if list is large and
+  scrollable.
+- FileChooser: Show localized text for all locales supported by Java's Metal
+  look and feel. (issue #680)
+- Added system property `flatlaf.useNativeLibrary` to allow disabling loading of
+  FlatLaf native library. (issue #674)
+- IntelliJ Themes:
+  - Reduced memory footprint by releasing Json data and ignoring IntelliJ UI
+    properties that are not used in FlatLaf.
+  - Updated "Hiberbee Dark" and "Gradianto" themes.
+
+#### Fixed bugs
+
+- Styling: Fixed scaling of some styling properties (`rowHeight` for Table and
+  Tree; `iconTextGap` for Button, CheckBox and RadioButton). (issue #682)
+- Fixed `IllegalComponentStateException` when invoker is not showing in
+  `SubMenuUsabilityHelper`. (issue #692)
+- macOS themes: Changing `@accentColor` variable in FlatLaf properties files did
+  not change all accent related colors for all components.
+- IntelliJ Themes:
+  - "Light Owl" theme: Fixed wrong (unreadable) text color in selected menu
+    items, selected text in text components, and selection in ComboBox popup
+    list. (issue #687)
+  - "Gradianto Midnight Blue" theme: Fixed color of ScrollBar track, which was
+    not visible. (issue #686)
+  - "Monocai" theme: Fixed unreadable text color of default buttons. (issue
+    #693)
+  - "Vuesion" theme: Fixed foreground colors of disabled text.
+  - "Material UI Lite" themes: Fixed non-editable ComboBox button background.
+  - CheckBox and RadioButton: Fixed unselected icon colors for themes "Atom One
+    Light", "Cyan Light", "GitHub", "Light Owl", "Material Lighter" and
+    "Solarized Light".
+  - TabbedPane: Fixed focused tab background color for themes "Arc *", "Material
+    Design Dark", "Monocai", "One Dark", "Spacegray" and "Xcode-Dark". (issue
+    #697)
+  - TextComponents, ComboBox and Spinner: Fixed background colors of enabled
+    text components, to distinguish from disabled, for themes "Carbon", "Cobalt
+    2", "Gradianto *", "Gruvbox *", "Monocai", "Spacegray", "Vuesion",
+    "Xcode-Dark", "GitHub", and "Light Owl". (issue #528)
+  - Fixed wrong disabled text colors in "Dark Flat", "Hiberbee Dark", "Light
+    Flat", "Nord", "Solarized Dark" and "Solarized Light" themes.
+  - Fixed colors for selection background/foreground, Separator, Slider track
+    and ProgressBar background in various themes.
+- Native Windows libraries: Fixed crash when running in Java 8 and newer Java
+  version is installed in `PATH` environment variable and using class
+  `SystemInfo` before AWT initialization. (issue #673)
+- ComboBox: Fixed search in item list for text with spaces. (issue #691)
+- FormattedTextField: On Linux, fixed `IllegalArgumentException: Invalid
+  location` if `JFormattedTextField.setDocument()` is invoked in a focus gained
+  listener on that formatted text field. (issue #698)
+- PopupMenu: Make sure that popup menu does not overlap any operating system
+  task bar. (issue #701)
+- FileChooser: Use system icons on Windows with Java 17.0.3 (and later) 32-bit.
+  Only Java 17 - 17.0.2 32-bit do not use system icons because of a bug in Java
+  32-bit that crashes the application. (PR #709)
+- FileChooser: Fixed crash on Windows with Java 17 to 17.0.2 32-bit. Java 17
+  64-bit is not affected. (regression since FlatLaf 2.3; PR #522, see also issue
+  #403)
+
+#### Incompatibilities
+
+- Extras: Class `FlatSVGIcon` now uses [JSVG](https://github.com/weisJ/jsvg)
+  library for SVG rendering. You need to replace svgSalamander with JSVG in your
+  build scripts and distribute `jsvg.jar` with your application. Also replace
+  `com.kitfox.svg` with `com.github.weisj.jsvg` in `module-info.java` files.
+- IntelliJ Themes: Removed all "Contrast" themes from "Material UI Lite".
+
+
+## 3.1.1
+
+- IntelliJ Themes:
+  - Fixed too large menu item paddings and too large table/tree row heights (all
+    "Material Theme UI Lite" themes; issue #667; regression in FlatLaf 3.1).
+  - Fixed too large tree row height in "Carbon", "Dark Purple", "Gray",
+    "Material Design Dark", "Monokai Pro", "One Dark" and "Spacegray" themes.
+- Native libraries: Fixed `IllegalArgumentException: URI scheme is not "file"`
+  when using FlatLaf in WebStart. (issue #668; regression in FlatLaf 3.1)
+
+
+## 3.1
 
 #### New features and improvements
 
 - Windows 11: Popups (`JPopupMenu`, `JComboBox`, `JToolTip`, etc.) now use
-  native Windows 11 rounded borders and drop shadows.
+  native Windows 11 rounded borders and drop shadows. (PR #643)
 - Fonts:
   - Added **Roboto Mono** (https://fonts.google.com/specimen/Roboto+Mono). (PR
     #639, issue #638)
@@ -20,6 +166,18 @@ FlatLaf Change Log
   tab, then this color is now used even if the tab is focused or selected.
 - TableHeader: Support column hover and pressed background and foreground
   colors. (issue #636)
+- Native libraries: Made it easier to distribute FlatLaf native libraries
+  (Windows `.dll` and Linux `.so`) to avoid problems on operating systems with
+  enabled execution restrictions.
+  See https://www.formdev.com/flatlaf/native-libraries/ for more details. (issue #624)
+  - Published native libraries to Maven Central for easy using them as
+    dependencies in Gradle and Maven.
+  - If available, native libraries are now loaded from same location as
+    `flatlaf.jar`, otherwise they are extract from `flatlaf.jar` to temporary
+    folder and loaded from there.
+  - Windows DLLs are now digitally signed with FormDev Software GmbH
+    certificate.
+
 
 #### Fixed bugs
 
@@ -38,6 +196,8 @@ FlatLaf Change Log
   - Updated "Hiberbee Dark" and "Material Theme UI Lite" themes.
 - Styling: Fixed resolving of UI variables in styles that use other variables.
 - MenuItem: Fixed horizontal alignment of icons. (issue #631)
+- Table: Fixed potential performance issue with paint cell focus indicator
+  border. (issue #654)
 - Tree: Fixed missing custom closed/opened/leaf icons of a custom
   `DefaultTreeCellRenderer`. (issue #653; regression since implementing PR #609
   in FlatLaf 3.0)

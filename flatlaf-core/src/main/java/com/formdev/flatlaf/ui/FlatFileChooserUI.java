@@ -29,6 +29,7 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.function.Function;
 import javax.swing.AbstractButton;
 import javax.swing.Box;
@@ -53,6 +54,7 @@ import javax.swing.plaf.ComponentUI;
 import javax.swing.plaf.metal.MetalFileChooserUI;
 import javax.swing.table.TableCellRenderer;
 import com.formdev.flatlaf.FlatClientProperties;
+import com.formdev.flatlaf.icons.FlatFileViewDirectoryIcon;
 import com.formdev.flatlaf.util.LoggingFacade;
 import com.formdev.flatlaf.util.ScaledImageIcon;
 import com.formdev.flatlaf.util.SystemInfo;
@@ -346,12 +348,12 @@ public class FlatFileChooserUI
 			fileView.clearIconCache();
 	}
 
-	private boolean doNotUseSystemIcons() {
+	private static boolean doNotUseSystemIcons() {
 		// Java 17 32bit craches on Windows when using system icons
-		// fixed in Java 18+ (see https://bugs.openjdk.java.net/browse/JDK-8277299)
+		// fixed in Java 18+, fix backported in Java 17.0.3+ (see https://bugs.openjdk.java.net/browse/JDK-8277299)
 		return SystemInfo.isWindows &&
 			SystemInfo.isX86 &&
-			(SystemInfo.isJava_17_orLater && !SystemInfo.isJava_18_orLater);
+			(SystemInfo.isJava_17_orLater && SystemInfo.javaVersion < SystemInfo.toVersion( 17, 0, 3, 0 ));
 	}
 
 	//---- class FlatFileView -------------------------------------------------
@@ -407,7 +409,7 @@ public class FlatFileChooserUI
 
 		protected final File[] files;
 		protected final JToggleButton[] buttons;
-		protected final ButtonGroup buttonGroup;
+		protected final ButtonGroup buttonGroup = new ButtonGroup();
 
 		@SuppressWarnings( "unchecked" )
 		public FlatShortcutsPanel( JFileChooser fc ) {
@@ -426,19 +428,22 @@ public class FlatFileChooserUI
 			File[] files = getChooserShortcutPanelFiles( fsv );
 			if( filesFunction != null )
 				files = filesFunction.apply( files );
-			this.files = files;
 
 			// create toolbar buttons
-			buttons = new JToggleButton[files.length];
-			buttonGroup = new ButtonGroup();
-			for( int i = 0; i < files.length; i++ ) {
-				// wrap drive path
-				if( fsv.isFileSystemRoot( files[i] ) )
-					files[i] = fsv.createFileObject( files[i].getAbsolutePath() );
+			ArrayList<File> filesList = new ArrayList<>();
+			ArrayList<JToggleButton> buttonsList = new ArrayList<>();
+			for( File file : files ) {
+				if( file == null )
+					continue;
 
-				File file = files[i];
+				// wrap drive path
+				if( fsv.isFileSystemRoot( file ) )
+					file = fsv.createFileObject( file.getAbsolutePath() );
+
 				String name = getDisplayName( fsv, file );
 				Icon icon = getIcon( fsv, file );
+				if( name == null )
+					continue;
 
 				// remove path from name
 				int lastSepIndex = name.lastIndexOf( File.separatorChar );
@@ -453,14 +458,20 @@ public class FlatFileChooserUI
 
 				// create button
 				JToggleButton button = createButton( name, icon );
+				File f = file;
 				button.addActionListener( e -> {
-					fc.setCurrentDirectory( file );
+					fc.setCurrentDirectory( f );
 				} );
 
 				add( button );
 				buttonGroup.add( button );
-				buttons[i] = button;
+
+				filesList.add( file );
+				buttonsList.add( button );
 			}
+
+			this.files = filesList.toArray( new File[filesList.size()] );
+			this.buttons = buttonsList.toArray( new JToggleButton[buttonsList.size()] );
 
 			directoryChanged( fc.getCurrentDirectory() );
 		}
@@ -526,6 +537,9 @@ public class FlatFileChooserUI
 					return icon;
 			}
 
+			if( doNotUseSystemIcons() )
+				return new FlatFileViewDirectoryIcon();
+
 			// Java 17+ supports getting larger system icons
 			try {
 				if( SystemInfo.isJava_17_orLater ) {
@@ -541,10 +555,12 @@ public class FlatFileChooserUI
 							return new ImageIcon( image );
 					}
 				}
-			} catch( IllegalAccessException ex ) {
-				// do not log because access may be denied via VM option '--illegal-access=deny'
 			} catch( Exception ex ) {
-				LoggingFacade.INSTANCE.logSevere( null, ex );
+				// do not log InaccessibleObjectException because access
+				// may be denied via VM option '--illegal-access=deny' (default in Java 16)
+				// (not catching InaccessibleObjectException here because it is new in Java 9, but FlatLaf also runs on Java 8)
+				if( !"java.lang.reflect.InaccessibleObjectException".equals( ex.getClass().getName() ) )
+					LoggingFacade.INSTANCE.logSevere( null, ex );
 			}
 
 			// get system icon in default size 16x16
