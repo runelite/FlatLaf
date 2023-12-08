@@ -88,19 +88,13 @@ publishing {
 
 	repositories {
 		maven {
-			name = "OSSRH"
+			name = "rrn"
 
-			val releasesRepoUrl = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
-			val snapshotsRepoUrl = "https://oss.sonatype.org/content/repositories/snapshots/"
-			url = uri( if( rootProject.hasProperty( "release" ) ) releasesRepoUrl else snapshotsRepoUrl )
+			url = uri("https://repo.runelite.net")
 
 			credentials {
-				// get from gradle.properties
-				val ossrhUsername: String? by project
-				val ossrhPassword: String? by project
-
-				username = System.getenv( "OSSRH_USERNAME" ) ?: ossrhUsername
-				password = System.getenv( "OSSRH_PASSWORD" ) ?: ossrhPassword
+				username = System.getenv( "RRN_USERNAME" )
+				password = System.getenv( "RRN_PASSWORD" )
 			}
 		}
 	}
