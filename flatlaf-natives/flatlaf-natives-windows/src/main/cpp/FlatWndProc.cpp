@@ -279,11 +279,13 @@ LRESULT CALLBACK FlatWndProc::WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, L
 			break;
 
 		case WM_ERASEBKGND:
+#if 0
 			// do not erase background while the user is moving the window,
 			// otherwise there may be rendering artifacts on HiDPI screens with Java 9+
 			// when dragging the window partly offscreen and back into the screen bounds
 			if( isMoving )
 				return FALSE;
+#endif
 
 			return WmEraseBkgnd( hwnd, uMsg, wParam, lParam );
 
