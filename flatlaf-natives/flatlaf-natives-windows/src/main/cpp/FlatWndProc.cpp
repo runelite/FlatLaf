@@ -214,6 +214,9 @@ void FlatWndProc::setWindowBackground( HWND hwnd, int r, int g, int b ) {
 
 void FlatWndProc::setContainInScreen(HWND hwnd, bool state)
 {
+	if (!hwndMap)
+		return;
+
 	FlatWndProc* fwp = (FlatWndProc*) hwndMap->get( hwnd );
 	if( fwp == NULL )
 		return;
