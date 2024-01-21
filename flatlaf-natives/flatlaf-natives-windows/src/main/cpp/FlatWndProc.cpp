@@ -368,6 +368,7 @@ LRESULT FlatWndProc::WmNcCalcSize( HWND hwnd, int uMsg, WPARAM wParam, LPARAM lP
 		// a window when it's maximized unless you restore it).
 		params->rgrc[0].top += getResizeHandleHeight();
 
+#if 0
 		// check whether taskbar is in the autohide state
 		APPBARDATA autohide{ 0 };
 		autohide.cbSize = sizeof( autohide );
@@ -390,6 +391,7 @@ LRESULT FlatWndProc::WmNcCalcSize( HWND hwnd, int uMsg, WPARAM wParam, LPARAM lP
 			if( hasAutohideTaskbar( ABE_RIGHT, monitorInfo.rcMonitor ) )
 				params->rgrc[0].right--;
 		}
+#endif
 	}
 
 	return lResult;
