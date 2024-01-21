@@ -104,4 +104,6 @@ public class FlatNativeWindowsLibrary
 	 * Supported since Windows 11 Build 22000.
 	 */
 	public native static boolean setWindowBorderColor( long hwnd, int red, int green, int blue );
+
+	public native static void setContainInScreen(Window window, boolean state);
 }

@@ -27,6 +27,7 @@ public:
 	static void uninstall( JNIEnv *env, jobject obj, HWND hwnd );
 	static void updateFrame( HWND hwnd, int state );
 	static void setWindowBackground( HWND hwnd, int r, int g, int b );
+	static void setContainInScreen(HWND hwnd, bool state);
 
 private:
 	static int initialized;
@@ -43,6 +44,7 @@ private:
 	WNDPROC defaultWndProc;
 	int wmSizeWParam;
 	HBRUSH background;
+	bool containInScreen;
 	bool isMovingOrSizing;
 	bool isMoving;
 
@@ -55,6 +57,7 @@ private:
 	LRESULT WmEraseBkgnd( HWND hwnd, int uMsg, WPARAM wParam, LPARAM lParam );
 	LRESULT WmNcCalcSize( HWND hwnd, int uMsg, WPARAM wParam, LPARAM lParam );
 	LRESULT WmNcHitTest( HWND hwnd, int uMsg, WPARAM wParam, LPARAM lParam );
+	LRESULT WmWindowPosChanging( HWND hwnd, int uMsg, WPARAM wParam, LPARAM lParam );
 
 	LRESULT screen2windowCoordinates( HWND hwnd, LPARAM lParam );
 	int getResizeHandleHeight();

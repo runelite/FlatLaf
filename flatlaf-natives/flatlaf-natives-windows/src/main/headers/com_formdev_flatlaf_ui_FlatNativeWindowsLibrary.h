@@ -47,6 +47,14 @@ JNIEXPORT jboolean JNICALL Java_com_formdev_flatlaf_ui_FlatNativeWindowsLibrary_
 JNIEXPORT jboolean JNICALL Java_com_formdev_flatlaf_ui_FlatNativeWindowsLibrary_setWindowBorderColor
   (JNIEnv *, jclass, jlong, jint, jint, jint);
 
+/*
+ * Class:     com_formdev_flatlaf_ui_FlatNativeWindowsLibrary
+ * Method:    setContainInScreen
+ * Signature: (Ljava/awt/Window;Z)V
+ */
+JNIEXPORT void JNICALL Java_com_formdev_flatlaf_ui_FlatNativeWindowsLibrary_setContainInScreen
+  (JNIEnv *, jclass, jobject, jboolean);
+
 #ifdef __cplusplus
 }
 #endif

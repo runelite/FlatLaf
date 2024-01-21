@@ -20,6 +20,7 @@
 #include <windows.h>
 #include <dwmapi.h>
 #include "com_formdev_flatlaf_ui_FlatNativeWindowsLibrary.h"
+#include "FlatWndProc.h"
 
 /**
  * @author Karl Tauber
@@ -46,6 +47,17 @@ JNIEXPORT jlong JNICALL Java_com_formdev_flatlaf_ui_FlatNativeWindowsLibrary_get
 	( JNIEnv* env, jclass cls, jobject window )
 {
 	return reinterpret_cast<jlong>( getWindowHandle( env, window ) );
+}
+
+extern "C"
+JNIEXPORT void JNICALL Java_com_formdev_flatlaf_ui_FlatNativeWindowsLibrary_setContainInScreen
+	( JNIEnv* env, jclass cls, jobject window, jboolean state )
+{
+	HWND hwnd = getWindowHandle(env, window);
+	if (!hwnd)
+		return;
+
+	FlatWndProc::setContainInScreen(hwnd, state);
 }
 
 //---- Desktop Window Manager (DWM) -------------------------------------------

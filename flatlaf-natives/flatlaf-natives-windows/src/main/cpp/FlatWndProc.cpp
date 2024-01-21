@@ -90,6 +90,7 @@ FlatWndProc::FlatWndProc() {
 	defaultWndProc = NULL;
 	wmSizeWParam = -1;
 	background = NULL;
+	containInScreen = false;
 	isMovingOrSizing = false;
 	isMoving = false;
 }
@@ -211,6 +212,15 @@ void FlatWndProc::setWindowBackground( HWND hwnd, int r, int g, int b ) {
 	fwp->background = ::CreateSolidBrush( RGB( r, g, b ) );
 }
 
+void FlatWndProc::setContainInScreen(HWND hwnd, bool state)
+{
+	FlatWndProc* fwp = (FlatWndProc*) hwndMap->get( hwnd );
+	if( fwp == NULL )
+		return;
+
+	fwp->containInScreen = state;
+}
+
 LRESULT CALLBACK FlatWndProc::StaticWindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam ) {
 	FlatWndProc* fwp = (FlatWndProc*) hwndMap->get( hwnd );
 	if( fwp == NULL )
@@ -291,6 +301,9 @@ LRESULT CALLBACK FlatWndProc::WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, L
 
 		case WM_DESTROY:
 			return WmDestroy( hwnd, uMsg, wParam, lParam );
+
+		case WM_WINDOWPOSCHANGING:
+			return WmWindowPosChanging( hwnd, uMsg, wParam, lParam );
 	}
 
 	return ::CallWindowProc( defaultWndProc, hwnd, uMsg, wParam, lParam );
@@ -423,6 +436,56 @@ LRESULT FlatWndProc::WmNcHitTest( HWND hwnd, int uMsg, WPARAM wParam, LPARAM lPa
 		(::GetWindowLong( hwnd, GWL_STYLE ) & WS_THICKFRAME) != 0;
 
 	return onNcHitTest( x, y, isOnResizeBorder );
+}
+
+LRESULT FlatWndProc::WmWindowPosChanging(HWND hwnd, int uMsg, WPARAM wParam, LPARAM lParam)
+{
+	if (!containInScreen)
+		return CallWindowProc(defaultWndProc, hwnd, uMsg, wParam, lParam);
+
+	HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONULL);
+	if (!monitor)
+		return CallWindowProc(defaultWndProc, hwnd, uMsg, wParam, lParam);
+
+	MONITORINFO info;
+	info.cbSize = sizeof(MONITORINFO);
+	GetMonitorInfo(monitor, &info);
+
+	RECT outside, inside;
+	GetClientRect(hwnd, &inside);
+	GetWindowRect(hwnd, &outside);
+	RECT insets = {0};
+	if (outside.right - outside.left > 0 && outside.bottom - outside.top > 0)
+	{
+		MapWindowPoints(hwnd, NULL, (LPPOINT)&inside, 2);
+		insets.top = inside.top - outside.top;
+		insets.bottom = outside.bottom - inside.bottom;
+		insets.left = inside.left - outside.left;
+		insets.right = outside.right - inside.right;
+	}
+
+	WINDOWPOS *winpos = reinterpret_cast<WINDOWPOS *>(lParam);
+	const RECT &rcMonitor = info.rcMonitor;
+
+	if (winpos->x + winpos->cx - insets.right > rcMonitor.right)
+	{
+		winpos->x = rcMonitor.right - winpos->cx + insets.right;
+	}
+	else if (winpos->x + insets.left < rcMonitor.left)
+	{
+		winpos->x = rcMonitor.left - insets.left;
+	}
+
+	if (winpos->y + insets.top < rcMonitor.top)
+	{
+		winpos->y = rcMonitor.top - insets.top;
+	}
+	else if (winpos->y + winpos->cy - insets.bottom > rcMonitor.bottom)
+	{
+		winpos->y = rcMonitor.bottom - winpos->cy + insets.bottom;
+	}
+
+	return CallWindowProc(defaultWndProc, hwnd, uMsg, wParam, lParam);
 }
 
 /**
