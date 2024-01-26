@@ -57,7 +57,7 @@ private:
 	LRESULT WmEraseBkgnd( HWND hwnd, int uMsg, WPARAM wParam, LPARAM lParam );
 	LRESULT WmNcCalcSize( HWND hwnd, int uMsg, WPARAM wParam, LPARAM lParam );
 	LRESULT WmNcHitTest( HWND hwnd, int uMsg, WPARAM wParam, LPARAM lParam );
-	LRESULT WmWindowPosChanging( HWND hwnd, int uMsg, WPARAM wParam, LPARAM lParam );
+	LRESULT WmSizingOrMoving( HWND hwnd, int uMsg, WPARAM wParam, LPARAM lParam );
 
 	LRESULT screen2windowCoordinates( HWND hwnd, LPARAM lParam );
 	int getResizeHandleHeight();
