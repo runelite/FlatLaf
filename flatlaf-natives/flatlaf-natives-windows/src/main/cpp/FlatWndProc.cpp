@@ -93,6 +93,7 @@ FlatWndProc::FlatWndProc() {
 	containInScreen = false;
 	isMovingOrSizing = false;
 	isMoving = false;
+	allowMovingOutsideMonitor = false;
 }
 
 HWND FlatWndProc::install( JNIEnv *env, jobject obj, jobject window ) {
@@ -285,6 +286,10 @@ LRESULT CALLBACK FlatWndProc::WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, L
 			isMovingOrSizing = isMoving = false;
 			break;
 
+		case WM_CAPTURECHANGED:
+			allowMovingOutsideMonitor = isMovingOrSizing;
+			break;
+
 		case WM_SIZING:
 			return WmSizingOrMoving( hwnd, uMsg, wParam, lParam );
 		case WM_MOVE:
@@ -293,6 +298,16 @@ LRESULT CALLBACK FlatWndProc::WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, L
 				isMoving = true;
 			if (uMsg == WM_MOVING)
 				return WmSizingOrMoving( hwnd, uMsg, wParam, lParam );
+			break;
+
+		case WM_WINDOWPOSCHANGING:
+			if (allowMovingOutsideMonitor) {
+			    // Prevent the top of the window from being forcefully contained in the
+			    // screen when the window is being moved by the mouse
+				WINDOWPOS* winpos = reinterpret_cast<WINDOWPOS*>(lParam);
+				winpos->flags |= SWP_NOMOVE;
+				allowMovingOutsideMonitor = false;
+			}
 			break;
 
 		case WM_ERASEBKGND:
