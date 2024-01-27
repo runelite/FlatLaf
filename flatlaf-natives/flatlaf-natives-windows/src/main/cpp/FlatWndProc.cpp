@@ -93,6 +93,7 @@ FlatWndProc::FlatWndProc() {
 	containInScreen = false;
 	isMovingOrSizing = false;
 	isMoving = false;
+	allowMovingOutsideMonitor = false;
 }
 
 HWND FlatWndProc::install( JNIEnv *env, jobject obj, jobject window ) {
@@ -285,10 +286,28 @@ LRESULT CALLBACK FlatWndProc::WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, L
 			isMovingOrSizing = isMoving = false;
 			break;
 
+		case WM_CAPTURECHANGED:
+			allowMovingOutsideMonitor = isMovingOrSizing;
+			break;
+
+		case WM_SIZING:
+			return WmSizingOrMoving( hwnd, uMsg, wParam, lParam );
 		case WM_MOVE:
 		case WM_MOVING:
 			if( isMovingOrSizing )
 				isMoving = true;
+			if (uMsg == WM_MOVING)
+				return WmSizingOrMoving( hwnd, uMsg, wParam, lParam );
+			break;
+
+		case WM_WINDOWPOSCHANGING:
+			if (allowMovingOutsideMonitor) {
+			    // Prevent the top of the window from being forcefully contained in the
+			    // screen when the window is being moved by the mouse
+				WINDOWPOS* winpos = reinterpret_cast<WINDOWPOS*>(lParam);
+				winpos->flags |= SWP_NOMOVE;
+				allowMovingOutsideMonitor = false;
+			}
 			break;
 
 		case WM_ERASEBKGND:
@@ -304,9 +323,6 @@ LRESULT CALLBACK FlatWndProc::WindowProc( HWND hwnd, UINT uMsg, WPARAM wParam, L
 
 		case WM_DESTROY:
 			return WmDestroy( hwnd, uMsg, wParam, lParam );
-
-		case WM_WINDOWPOSCHANGING:
-			return WmWindowPosChanging( hwnd, uMsg, wParam, lParam );
 	}
 
 	return ::CallWindowProc( defaultWndProc, hwnd, uMsg, wParam, lParam );
@@ -441,8 +457,7 @@ LRESULT FlatWndProc::WmNcHitTest( HWND hwnd, int uMsg, WPARAM wParam, LPARAM lPa
 	return onNcHitTest( x, y, isOnResizeBorder );
 }
 
-LRESULT FlatWndProc::WmWindowPosChanging(HWND hwnd, int uMsg, WPARAM wParam, LPARAM lParam)
-{
+LRESULT FlatWndProc::WmSizingOrMoving(HWND hwnd, int uMsg, WPARAM wParam, LPARAM lParam) {
 	if (!containInScreen)
 		return CallWindowProc(defaultWndProc, hwnd, uMsg, wParam, lParam);
 
@@ -467,25 +482,39 @@ LRESULT FlatWndProc::WmWindowPosChanging(HWND hwnd, int uMsg, WPARAM wParam, LPA
 		insets.right = outside.right - inside.right;
 	}
 
-	WINDOWPOS *winpos = reinterpret_cast<WINDOWPOS *>(lParam);
+	RECT *winrect = reinterpret_cast<RECT *>(lParam);
 	const RECT &rcMonitor = info.rcMonitor;
 
-	if (winpos->x + winpos->cx - insets.right > rcMonitor.right)
+	LONG width = winrect->right - winrect->left;
+	LONG height = winrect->bottom - winrect->top;
+
+    // Adjust both sides only for move operations
+	BOOL isMoving = uMsg == WM_MOVING;
+
+	if (winrect->right - insets.right > rcMonitor.right)
 	{
-		winpos->x = rcMonitor.right - winpos->cx + insets.right;
+		winrect->right = rcMonitor.right + insets.right;
+		if (isMoving)
+			winrect->left = winrect->right - width;
 	}
-	else if (winpos->x + insets.left < rcMonitor.left)
+	else if (winrect->left + insets.left < rcMonitor.left)
 	{
-		winpos->x = rcMonitor.left - insets.left;
+		winrect->left = rcMonitor.left - insets.left;
+		if (isMoving)
+			winrect->right = winrect->left + width;
 	}
 
-	if (winpos->y + insets.top < rcMonitor.top)
+	if (winrect->top + insets.top < rcMonitor.top)
 	{
-		winpos->y = rcMonitor.top - insets.top;
+		winrect->top = rcMonitor.top - insets.top;
+		if (isMoving)
+			winrect->bottom = winrect->top + height;
 	}
-	else if (winpos->y + winpos->cy - insets.bottom > rcMonitor.bottom)
+	else if (winrect->bottom - insets.bottom > rcMonitor.bottom)
 	{
-		winpos->y = rcMonitor.bottom - winpos->cy + insets.bottom;
+		winrect->bottom = rcMonitor.bottom + insets.bottom;
+		if (isMoving)
+			winrect->top = winrect->bottom - height;
 	}
 
 	return CallWindowProc(defaultWndProc, hwnd, uMsg, wParam, lParam);
