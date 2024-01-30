@@ -47,7 +47,6 @@ private:
 	bool containInScreen;
 	bool isMovingOrSizing;
 	bool isMoving;
-	bool allowMovingOutsideMonitor;
 
 	FlatWndProc();
 	static void initIDs( JNIEnv *env, jobject obj );
